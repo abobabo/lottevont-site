@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#102c37">
+    <title>Benjamina</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+      body { background: #102c37; color: #f3f7f5; font: 16px/1.5 system-ui, sans-serif; }
+      #game { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; }
+      #unity-canvas { display: block; width: 100%; height: 100%; background: #102c37; touch-action: none; }
+      #unity-canvas:focus { outline: none; }
+      #loading {
+        position: absolute; inset: 0; display: grid; place-content: center;
+        justify-items: center; gap: 18px; padding: 24px;
+        background: #102c37; text-align: center;
+      }
+      #loading[hidden], [hidden] { display: none; }
+      #status { margin: 0; max-width: 36rem; }
+      progress { width: min(16rem, 70vw); height: 8px; accent-color: #a6d9ca; }
+      button { border: 1px solid #a6d9ca; border-radius: 6px; padding: 10px 20px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+      button:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+      noscript { position: fixed; inset: 0; display: grid; place-content: center; padding: 24px; background: #102c37; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <main id="game">
+      <canvas id="unity-canvas" width="960" height="600" tabindex="0" aria-label="Benjamina game">This game needs a browser with WebGL support.</canvas>
+      <div id="loading">
+        <p id="status" role="status" aria-live="polite">Loading Benjamina…</p>
+        <progress id="progress" max="1" value="0" aria-label="Game loading progress"></progress>
+        <button id="retry" type="button" hidden>Try again</button>
+      </div>
+    </main>
+    <noscript>Enable JavaScript in your browser to play Benjamina.</noscript>
+    <script>
+      const canvas = document.getElementById("unity-canvas");
+      const loading = document.getElementById("loading");
+      const status = document.getElementById("status");
+      const progress = document.getElementById("progress");
+      const retry = document.getElementById("retry");
+      let failed = false;
+
+      function showFailure(error) {
+        failed = true;
+        console.error("Benjamina failed to load:", error);
+        loading.hidden = false;
+        status.textContent = "The game could not start. Check your connection and try again. If it still fails, try an up-to-date browser with WebGL enabled.";
+        progress.hidden = true;
+        retry.hidden = false;
+      }
+
+      retry.addEventListener("click", () => location.reload());
+      canvas.addEventListener("pointerdown", () => canvas.focus());
+      canvas.addEventListener("contextmenu", event => event.preventDefault());
+
+      // Keep all resources relative so this folder can live at /benjamina/ or any Pages path.
+      const buildUrl = "Build";
+      const config = {
+        dataUrl: buildUrl + "/WebGL.data.unityweb",
+        frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb",
+        codeUrl: buildUrl + "/WebGL.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "DressyJet",
+        productVersion: "0.1.0",
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        showBanner: (message, type) => {
+          if (type === "error") showFailure(message);
+          else console.warn(message);
+        }
+      };
+
+      const loader = document.createElement("script");
+      loader.src = buildUrl + "/WebGL.loader.js";
+      loader.onerror = () => showFailure("The game loader could not be downloaded.");
+      loader.onload = async () => {
+        try {
+          await createUnityInstance(canvas, config, value => {
+            progress.value = value;
+            if (value >= 0.9 && !failed) status.textContent = "Starting Benjamina…";
+          });
+          if (!failed) {
+            loading.hidden = true;
+            canvas.focus();
+          }
+        } catch (error) {
+          showFailure(error);
+        }
+      };
+      document.body.appendChild(loader);
+    </script>
+  </body>
+</html>
